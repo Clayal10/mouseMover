@@ -1,11 +1,14 @@
 // Requirements:
 // - Move the mouse with the arrow keys
-//   - Left: 
-//   - Right
-//   - Up: 
-//   - Down: 
-// - Use the pause button as left click
-
+//   - Left: 	105
+//   - Right: 	106
+//   - Up: 	103 
+//   - Down: 	109
+// - Use the right-alt button as left click: 100
+//
+// Notes:
+// - To make it smoother, we can lower SPEED, but it will be slower
+//   - How can we make it call more often/quicker?
 
 #include <linux/module.h>
 //#include <linux/config.h>
@@ -29,6 +32,8 @@
 #include <linux/slab.h>
 #include <linux/ctype.h>
 
+#define SPEED 1
+
 int state = 0;
 struct input_dev *ex3_dev;
 struct timer_list my_timer;
@@ -37,7 +42,28 @@ struct notifier_block nb;
 int kb_notifier_fn(struct notifier_block *pnb, unsigned long action, void* data){
 	struct keyboard_notifier_param *kp = (struct keyboard_notifier_param*)data;
 	if(kp->down){
-		
+		switch(kp->value){
+			case 103: // Up
+				for(int i=0; i<10; i++){
+					input_report_rel(ex3_dev, REL_Y, -SPEED);
+				}
+				break;
+			case 105: // Left
+				for(int i=0; i<10; i++){
+					input_report_rel(ex3_dev, REL_X, -SPEED);
+				}
+				break;
+			case 106: // Right
+				for(int i=0; i<10; i++){
+					input_report_rel(ex3_dev, REL_X, SPEED);
+				}
+				break;
+			case 108: // Down
+				for(int i=0; i<10; i++){
+					input_report_rel(ex3_dev, REL_Y, SPEED);
+				}
+				break;
+		}
 	}
 
 	return 0;
@@ -67,7 +93,7 @@ void my_timer_func(struct timer_list *unused){
 
 
 	/* set timer for 0.02 seconds */
-	//mod_timer(&my_timer, jiffies+HZ/125);
+	mod_timer(&my_timer, jiffies+HZ/125);
 }
 
 
