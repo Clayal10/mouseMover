@@ -24,3 +24,14 @@ And to clean up:
 sudo rmmod mouse.ko
 make clean
 ```
+
+## Controls
+- TURN ON/OFF: Right-CTRL
+- MOVEMENT: Arrow Keys
+- LEFT-CLICK: Right-ALT
+
+You can change how much the mouse moves with each click by modifying the definition near the top of the file:
+
+```c
+#define SPEED 1 // Change this number to any int
+```

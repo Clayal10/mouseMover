@@ -1,17 +1,9 @@
-// Requirements:
-// - Move the mouse with the arrow keys
-//   - Left: 	105
-//   - Right: 	106
-//   - Up: 	103 
-//   - Down: 	109
-// - Use the right-alt button as left click: 100
-//
-// Notes:
-// - To make it smoother, we can lower SPEED, but it will be slower
-//   - How can we make it call more often/quicker?
+// CONTROLS:
+// - TURN ON/OFF: Right-CTRL
+// - MOVEMENT: Arrow Keys
+// - LEFT-CLICK: Right-ALT
 
 #include <linux/module.h>
-//#include <linux/config.h>
 #include <linux/init.h>
 #include <linux/tty.h>          /* For fg_console, MAX_NR_CONSOLES */
 #include <linux/kd.h>           /* For KDSETLED */
@@ -20,17 +12,8 @@
 #include <linux/console_struct.h>       /* For vc_cons */
 #include <linux/input.h>
 #include <linux/platform_device.h>
-#include <linux/proc_fs.h>
 #include <linux/interrupt.h>
 #include <linux/keyboard.h>
-
-#include <linux/kernel.h>
-#include <linux/proc_fs.h>
-#include <linux/sched.h>
-#include <asm/uaccess.h>
-#include <asm/io.h>
-#include <linux/slab.h>
-#include <linux/ctype.h>
 
 #define SPEED 1
 
@@ -42,8 +25,11 @@ struct notifier_block nb;
 int kb_notifier_fn(struct notifier_block *pnb, unsigned long action, void* data){
 	struct keyboard_notifier_param *kp = (struct keyboard_notifier_param*)data;
 	if(kp->down){
-		if(kp->value == 97){
+		if(kp->value == 97){ // Right CTRL
 			state = !state;
+		}
+		if(kp->value == 100){ // Right ALT
+			input_report_key(ex3_dev, BTN_LEFT, 1);
 		}
 		if(!state){
 			return 0;
@@ -72,39 +58,18 @@ int kb_notifier_fn(struct notifier_block *pnb, unsigned long action, void* data)
 		}
 	}
 
+	if(kp->down == 0 && kp->value == 100) { // Release 'mouse click'
+		input_report_key(ex3_dev, BTN_LEFT, 0);
+	}
+	
+	input_sync(ex3_dev);
+
 	return 0;
 }
 
-void my_timer_func(struct timer_list *unused){
-	/* move in a small square */
-	if (state<30) 
-		input_report_rel(ex3_dev, REL_X, 5);
-	else if (state < 60)
-		input_report_rel(ex3_dev, REL_Y, 5);
-	else if (state < 90)
-		input_report_rel(ex3_dev, REL_X, -5);
-	else
-		input_report_rel(ex3_dev, REL_Y, -5);
-
-	if ((state++) >= 120){
-		state = 0;
-	}
-	/*
-	input_report_key(ex3_dev, BTN_LEFT, 1);
-	input_sync(ex3_dev);
-	input_report_key(ex3_dev, BTN_LEFT, 0);
-	*/
-
-	input_sync(ex3_dev);
-
-
-	/* set timer for 0.02 seconds */
-	mod_timer(&my_timer, jiffies+HZ/125);
-}
-
-
 static int __init ex3_init(void){
-		
+	int error;
+
 	/* extra safe initialization */
 	ex3_dev = input_allocate_device();
 
@@ -127,18 +92,20 @@ static int __init ex3_init(void){
 	set_bit(BTN_LEFT, ex3_dev->keybit);
 
 	/* and finally register with the input core */
-	input_register_device(ex3_dev);
+	error = input_register_device(ex3_dev);
+	if(error){
+		printk(KERN_ERR "Failed to register device\n");
+		goto err_free_dev;
+	}
 
-	/* set up a repeating timer */
-	//timer_setup(&my_timer, my_timer_func, 0);
-	//my_timer.expires = jiffies + HZ/10;
-	//add_timer(&my_timer);
-	
 	// Initilize keyboard notifier
 	nb.notifier_call = kb_notifier_fn;
 	register_keyboard_notifier(&nb);
 
 	return 0;
+err_free_dev:
+	input_free_device(ex3_dev); // Kernel.org thinks this is important
+	return error;
 }
 
 static void __exit ex3_exit(void){
