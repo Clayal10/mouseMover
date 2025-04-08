@@ -42,6 +42,12 @@ struct notifier_block nb;
 int kb_notifier_fn(struct notifier_block *pnb, unsigned long action, void* data){
 	struct keyboard_notifier_param *kp = (struct keyboard_notifier_param*)data;
 	if(kp->down){
+		if(kp->value == 97){
+			state = !state;
+		}
+		if(!state){
+			return 0;
+		}
 		switch(kp->value){
 			case 103: // Up
 				for(int i=0; i<10; i++){
